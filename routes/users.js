@@ -6,6 +6,7 @@ const {
   createUser,
   loginUser,
   getUserById,
+  getMe,
   updateUser,
   deleteUser,
   startCourse,

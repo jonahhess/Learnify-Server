@@ -21,6 +21,9 @@ router.post("/", validateNewUser, createUser);
 // Login a user
 router.post("/login", loginUser);
 
+// get me
+router.get("/me", auth, getMe);
+
 // interacting with the app
 
 // Add Course to user by Id

@@ -13,15 +13,16 @@ exports.createUser = async (req, res) => {
     const newUser = new User({ name, email, password });
     await newUser.save();
 
-    const token = jwt.sign(newUser.toObject(), process.env.JWT_SECRET, {
+    const payload = { userId: newUser._id }; // optionally add role: newUser.role
+    const token = jwt.sign(payload, process.env.JWT_SECRET, {
       expiresIn: "1h",
     });
 
     res
       .cookie("token", token, {
         httpOnly: true,
-        secure: true, // Use secure cookies in production
-        sameSite: "None",
+        secure: false, // Use secure cookies in production
+        sameSite: "strict",
         maxAge: 3600000, // 1 hour
       })
       .status(201)
@@ -45,15 +46,16 @@ exports.loginUser = async (req, res) => {
       return res.status(400).json({ message: "Invalid credentials" });
     }
 
-    const token = jwt.sign(user.toObject(), process.env.JWT_SECRET, {
+    const payload = { userId: user._id }; // optionally add role: user.role
+    const token = jwt.sign(payload, process.env.JWT_SECRET, {
       expiresIn: "1h",
     });
 
     res
       .cookie("token", token, {
         httpOnly: true,
-        secure: true, // Use secure cookies in production
-        sameSite: "None",
+        secure: false, // Use secure cookies in production
+        sameSite: "strict",
         maxAge: 3600000, // 1 hour
       })
       .json({ message: "Logged in successfully", user: user.toObject() });
@@ -95,6 +97,16 @@ exports.deleteUser = async (req, res) => {
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
+};
+
+exports.getMe = async (req, res) => {
+  const user = await User.findById(req.userId).select("_id name email");
+
+  if (!user) {
+    return res.status(404).json({ message: "User not found" });
+  }
+
+  res.json(user);
 };
 
 // interacting with the app data
@@ -283,7 +295,7 @@ exports.submitCourseware = async (req, res) => {
           nextCourseware.coursewareId ||
           (await doGenerateCourseware(courseTitle, courseId, title)._id),
       };
-      
+
       // if (!entry.coursewareId) {
       //   throw {message: "failed to create new courseware"}
       //   }
@@ -320,7 +332,7 @@ exports.submitCourseware = async (req, res) => {
         c.coursewareId?.equals(entry.coursewareId)
       );
       await new Promise((resolve) => setTimeout(resolve, 5000));
-    }    
+    }
     res.send("submitted courseware successfully");
   } catch (err) {
     res.status(400).json({ message: err.message });

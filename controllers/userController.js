@@ -55,7 +55,7 @@ exports.loginUser = async (req, res) => {
       .cookie("token", token, {
         httpOnly: true,
         secure: false, // Use secure cookies in production
-        sameSite: "strict",
+        sameSite: "lax",
         maxAge: 3600000, // 1 hour
         path: "/",
       })

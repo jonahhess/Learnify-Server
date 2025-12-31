@@ -57,8 +57,9 @@ exports.loginUser = async (req, res) => {
         secure: false, // Use secure cookies in production
         sameSite: "strict",
         maxAge: 3600000, // 1 hour
+        path: "/",
       })
-      .json({ message: "Logged in successfully", user: user.toObject() });
+      .json({ message: "Logged in successfully" });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

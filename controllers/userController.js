@@ -24,8 +24,6 @@ exports.createUser = async (req, res) => {
         secure: true, // Use secure cookies in production
         sameSite: "none",
         maxAge: 3600000, // 1 hour
-        path: "/",
-        domain: ".onrender.com",
       })
       .status(201)
       .json({ message: "User created successfully" });
@@ -59,8 +57,6 @@ exports.loginUser = async (req, res) => {
         secure: true, // Use secure cookies in production
         sameSite: "none",
         maxAge: 3600000, // 1 hour
-        path: "/",
-        domain: ".onrender.com",
       })
       .json({ message: "Logged in successfully" });
   } catch (err) {

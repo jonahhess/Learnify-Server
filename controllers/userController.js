@@ -22,7 +22,7 @@ exports.createUser = async (req, res) => {
       .cookie("token", token, {
         httpOnly: true,
         secure: true, // Use secure cookies in production
-        sameSite: "None",
+        sameSite: "none",
         maxAge: 3600000, // 1 hour
         path: "/",
         domain: ".onrender.com",
@@ -57,7 +57,7 @@ exports.loginUser = async (req, res) => {
       .cookie("token", token, {
         httpOnly: true,
         secure: true, // Use secure cookies in production
-        sameSite: "None",
+        sameSite: "none",
         maxAge: 3600000, // 1 hour
         path: "/",
         domain: ".onrender.com",

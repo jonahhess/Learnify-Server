@@ -127,21 +127,22 @@ exports.getMe = async (req, res) => {
 // start a course by ID
 exports.startCourse = async (req, res) => {
   try {
-    const [user, course] = await Promise.all([
-      User.findById(req.user._id),
-      Course.findById(req.body.id),
-    ]);
+    const user = await User.findById(req.userId);
+    const course = await Course.findById(req.body.id);
 
-    // error handling
     if (!course) return res.status(404).json({ message: "Course not found" });
     if (!user)
       return res
-        .status(500)
-        .json({ message: "user not found. This is awkward" });
+        .status(404)
+        .json({ message: "User not found. This is awkward" });
+
+    // Ensure myCurrentCourses is an array
+    user.myCurrentCourses = user.myCurrentCourses || [];
 
     if (user.myCurrentCourses.some((c) => c.courseId.equals(course._id))) {
-      return res.status(400).json({ message: "course already exists!" });
+      return res.status(400).json({ message: "Course already exists!" });
     }
+
     if (user.myCurrentCourses.length >= 5) {
       return res.status(400).json({ message: "Too many courses" });
     }

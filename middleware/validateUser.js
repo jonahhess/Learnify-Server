@@ -1,5 +1,5 @@
 function validateUser(req, res, next) {
-  const userId = req.user._id;
+  const userId = req.userId;
   const paramId = req.params.id;
 
   if (userId.toString() !== paramId) {

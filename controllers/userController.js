@@ -181,7 +181,7 @@ exports.startCourse = async (req, res) => {
 exports.startCourseware = async (req, res) => {
   try {
     const [user, courseware] = await Promise.all([
-      User.findById(req.user._id),
+      User.findById(req.userId),
       Courseware.findById(req.body.id),
     ]);
 
@@ -246,7 +246,7 @@ exports.startCourseware = async (req, res) => {
 exports.submitCourseware = async (req, res) => {
   try {
     const [user, courseware] = await Promise.all([
-      User.findById(req.user._id),
+      User.findById(req.userId),
       Courseware.findById(req.params.coursewareId),
     ]);
 
@@ -318,7 +318,7 @@ exports.submitCourseware = async (req, res) => {
     }
 
     const quiz = courseware.quiz.map((q) => q.questionId);
-    const userId = req.user._id;
+    const userId = req.userId;
     const now = new Date();
     const nextReviewDate = now.setDate(now.getDate() + 1);
 
@@ -341,7 +341,7 @@ exports.submitCourseware = async (req, res) => {
 
     let correctFlag = false;
     for (let i = 0; !correctFlag && i < 20; i++) {
-      const testUser = await User.findById(req.user._id);
+      const testUser = await User.findById(req.userId);
       correctFlag = testUser.myCurrentCourses.some((c) =>
         c.coursewareId?.equals(entry.coursewareId)
       );
@@ -369,7 +369,7 @@ const performReview = async (reviewCard, success) => {
 // batch review cards by ID
 exports.batchSubmitReviewCards2 = async (req, res) => {
   try {
-    const user = await User.findById(req.user._id);
+    const user = await User.findById(req.userId);
 
     // error handling
     if (!user)
@@ -391,7 +391,7 @@ exports.batchSubmitReviewCards2 = async (req, res) => {
     // array of relevant cards
     const reviewCards = await ReviewCard.find({
       questionId: { $in: reviewedCards.map((c) => c.questionId) },
-      userId: req.user._id,
+      userId: req.userId,
     });
 
     for (const card of reviewCards) {
@@ -418,7 +418,7 @@ exports.batchSubmitReviewCards2 = async (req, res) => {
 
 exports.batchSubmitReviewCards = async (req, res) => {
   try {
-    const user = await User.findById(req.user._id);
+    const user = await User.findById(req.userId);
 
     if (!user) {
       return res
@@ -438,7 +438,7 @@ exports.batchSubmitReviewCards = async (req, res) => {
     // find relevant cards
     const reviewCards = await ReviewCard.find({
       _id: { $in: reviewedCards.map((c) => c._id) },
-      userId: req.user._id,
+      userId: req.userId,
     });
 
     // build bulk update operations

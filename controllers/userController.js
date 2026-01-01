@@ -239,11 +239,12 @@ exports.startCourseware = async (req, res) => {
       const nextCourseware = course.coursewares[nextIndex];
       if (!nextCourseware.coursewareId) {
         // async fire-and-forget
-        doGenerateCourseware(
-          course.title,
-          course._id,
-          nextCourseware.title
-        ).then((newCW) => console.log("generated new course", newCW._id));
+        doGenerateCourseware(course.title, course._id, nextCourseware.title)
+          .then((newCourseware) => {
+            nextCourseware.coursewareId = newCourseware._id;
+            course.save().catch(console.error);
+          })
+          .catch(console.error);
       }
     }
 

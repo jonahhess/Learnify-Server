@@ -6,7 +6,7 @@ const {
   createUser,
   loginUser,
   getUserById,
-  getMe,
+  // getMe,
   updateUser,
   deleteUser,
   startCourse,
@@ -23,7 +23,7 @@ router.post("/", validateNewUser, createUser);
 router.post("/login", loginUser);
 
 // get me
-router.get("/me", auth, getMe);
+// router.get("/me", auth, getMe);
 
 // interacting with the app
 

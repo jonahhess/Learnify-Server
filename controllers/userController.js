@@ -103,15 +103,15 @@ exports.deleteUser = async (req, res) => {
   }
 };
 
-// exports.getMe = async (req, res) => {
-//   const user = await User.findById(req.userId).select("_id name email");
+exports.getMe = async (req, res) => {
+  const user = await User.findById(req.userId).select("_id name email");
 
-//   if (!user) {
-//     return res.status(404).json({ message: "User not found" });
-//   }
+  if (!user) {
+    return res.status(404).json({ message: "User not found" });
+  }
 
-//   res.json(user);
-// };
+  res.json(user);
+};
 
 // interacting with the app data
 

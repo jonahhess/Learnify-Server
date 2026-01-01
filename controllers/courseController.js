@@ -1,4 +1,4 @@
-const Course = require('../models/courses');
+const Course = require("../models/courses");
 
 // Create a new course
 exports.createCourse = async (req, res) => {
@@ -9,10 +9,15 @@ exports.createCourse = async (req, res) => {
     await newCourse.save();
 
     // add the course to the user's myCourses array
-    req.user.myCurrentCourses.push({ id: newCourse._id, title: newCourse.title });
+    req.user.myCurrentCourses.push({
+      id: newCourse._id,
+      title: newCourse.title,
+    });
     await req.user.save();
 
-    res.status(201).json({ message: "Course created successfully", course: newCourse });
+    res
+      .status(201)
+      .json({ message: "Course created successfully", course: newCourse });
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
@@ -29,23 +34,32 @@ exports.getAllCourses = async (req, res) => {
   }
 };
 
-// Get a course by ID
 exports.getCourseById = async (req, res) => {
   try {
-    const course = await Course.findById(req.params.id);
-    if (!course) return res.status(404).json({ message: 'Course not found' });
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid course ID" });
+    }
+
+    const course = await Course.findById(id);
+    if (!course) return res.status(404).json({ message: "Course not found" });
+
     res.json(course);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error("getCourseById error:", err);
+    res.status(500).json({ message: "Server error" });
   }
 };
 
 // Update a course by ID
 exports.updateCourse = async (req, res) => {
   try {
-    const course = await Course.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    if (!course) return res.status(404).json({ message: 'Course not found' });
-    // if the update is 
+    const course = await Course.findByIdAndUpdate(req.params.id, req.body, {
+      new: true,
+    });
+    if (!course) return res.status(404).json({ message: "Course not found" });
+    // if the update is
     res.json(course);
   } catch (err) {
     res.status(400).json({ message: err.message });
@@ -56,8 +70,8 @@ exports.updateCourse = async (req, res) => {
 exports.deleteCourse = async (req, res) => {
   try {
     const course = await Course.findByIdAndDelete(req.params.id);
-    if (!course) return res.status(404).json({ message: 'Course not found' });
-    res.json({ message: 'Course deleted' });
+    if (!course) return res.status(404).json({ message: "Course not found" });
+    res.json({ message: "Course deleted" });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

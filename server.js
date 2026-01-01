@@ -8,29 +8,33 @@ const { errorHandler } = require("./middleware/errorHandler");
 
 const cookieParser = require("cookie-parser");
 const cors = require("cors");
+
 const app = express();
 app.set("trust proxy", 1);
 
+const FRONTEND_URL = process.env.FRONTEND_URL;
+
 app.use(
   cors({
-    origin: "https://learnify-77of.onrender.com",
+    origin: FRONTEND_URL,
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 
-app.use(logger);
-app.use(limiter);
+app.options("*", cors());
+
 app.use(express.json());
 app.use(cookieParser());
 
+app.use(logger);
+app.use(limiter);
+
 connectDB();
 
-// Use the API routes
 app.use("/", apiRoutes);
 
-// Centralized error handler
 app.use(errorHandler);
 
 app.listen(process.env.PORT || 4000, () =>

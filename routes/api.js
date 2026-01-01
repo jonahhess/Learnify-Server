@@ -15,9 +15,8 @@ router.use("/review-cards", reviewCardRoutes);
 router.use("/questions", questionRoutes);
 router.use("/ai", aiRoutes);
 
-// TODO: Add API routes here
-router.get("/", (req, res) => {
-  res.send("API is working");
+router.get("/health", (req, res) => {
+  res.send("OK");
 });
 
 module.exports = router;

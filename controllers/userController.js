@@ -234,20 +234,6 @@ exports.startCourseware = async (req, res) => {
       });
     }
 
-    const nextIndex = index + 1;
-    if (nextIndex < course.coursewares.length) {
-      const nextCourseware = course.coursewares[nextIndex];
-      if (!nextCourseware.coursewareId) {
-        // async fire-and-forget
-        doGenerateCourseware(course.title, course._id, nextCourseware.title)
-          .then((newCourseware) => {
-            nextCourseware.coursewareId = newCourseware._id;
-            course.save().catch(console.error);
-          })
-          .catch(console.error);
-      }
-    }
-
     await user.save();
 
     res.send("added courseware successfully");
@@ -256,19 +242,116 @@ exports.startCourseware = async (req, res) => {
   }
 };
 
-// helper
-async function waitForNextCourseware(
-  coursewareId,
-  maxRetries = 20,
-  delayMs = 5000
-) {
-  for (let i = 0; i < maxRetries; i++) {
-    const next = await Courseware.findById(coursewareId);
-    if (next) return next; // Found it
-    await new Promise((resolve) => setTimeout(resolve, delayMs));
+// submit a courseware by ID
+exports.submitCourseware = async (req, res) => {
+  try {
+    const [user, courseware] = await Promise.all([
+      User.findById(req.userId),
+      Courseware.findById(req.params.coursewareId),
+    ]);
+
+    if (!user)
+      return res
+        .status(500)
+        .json({ message: "user not found. This is awkward" });
+    if (!courseware)
+      return res.status(404).json({ message: "Courseware not found" });
+
+    if (
+      !user.myCurrentCoursewares.some(
+        (c) => c._doc.coursewareId?.toString() === req.params.coursewareId
+      )
+    ) {
+      return res
+        .status(400)
+        .json({ message: "courseware not registered for user" });
+    }
+
+    const courseId = courseware.courseId;
+    const coursewareId = courseware._id;
+    const title = courseware.title;
+    const index = courseware._doc.index;
+
+    // move courseware from current to completed
+
+    const coursewaresExceptCurrent = user.myCurrentCoursewares.filter(
+      (c) => !c.coursewareId?.equals(coursewareId)
+    );
+
+    user.myCurrentCoursewares = coursewaresExceptCurrent;
+    user.myCompletedCoursewares.push({ courseId, coursewareId, title, index });
+
+    // check if user finished the course - if so move course to completed
+    const course = await Course.findById(courseId);
+    const courseTitle = course.title;
+    const length = course.coursewares?.length;
+    const lengthCompletedCoursewaresOfCourse =
+      user.myCompletedCoursewares.filter((c) =>
+        c.courseId.equals(courseId)
+      ).length;
+
+    if (length === lengthCompletedCoursewaresOfCourse) {
+      // completed the course! congrats
+      user.myCompletedCourses.push({ title: courseTitle, courseId, length });
+      user.myCurrentCourses = user.myCurrentCourses.filter(
+        (c) => c.courseId !== courseId
+      );
+    } else {
+      const nextIndex = index + 1;
+      const nextCourseware = course.coursewares[nextIndex];
+      const title = nextCourseware.title;
+
+      const entry = {
+        title,
+        courseId,
+        index: nextIndex,
+        coursewareId:
+          nextCourseware.coursewareId ||
+          (await doGenerateCourseware(courseTitle, courseId, title)._id),
+      };
+
+      // if (!entry.coursewareId) {
+      //   throw {message: "failed to create new courseware"}
+      //   }
+
+      user.myCurrentCoursewares.push(entry);
+    }
+
+    const quiz = courseware.quiz.map((q) => q.questionId);
+    const userId = req.userId;
+    const now = new Date();
+    const nextReviewDate = now.setDate(now.getDate() + 1);
+
+    const promises = [user.save()];
+    for (const questionId of quiz) {
+      promises.push(
+        ReviewCard.create({
+          questionId,
+          courseId,
+          coursewareId,
+          userId,
+          reviews: 0,
+          successes: 0,
+          nextReviewDate,
+        })
+      );
+    }
+
+    await Promise.all(promises);
+
+    let correctFlag = false;
+    for (let i = 0; !correctFlag && i < 20; i++) {
+      const testUser = await User.findById(req.userId);
+      correctFlag = testUser.myCurrentCourses.some((c) =>
+        c.coursewareId?.equals(entry.coursewareId)
+      );
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+    }
+    res.send("submitted courseware successfully");
+  } catch (err) {
+    res.status(400).json({ message: err.message });
   }
-  throw new Error("Next courseware did not become available in time");
-}
+};
 
 // submit a courseware by ID
 exports.submitCourseware = async (req, res) => {

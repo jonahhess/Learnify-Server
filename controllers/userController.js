@@ -68,6 +68,17 @@ exports.loginUser = async (req, res) => {
   }
 };
 
+exports.logout = (req, res) => {
+  res
+    .clearCookie("token", {
+      httpOnly: true,
+      secure: true,
+      sameSite: "none",
+      path: "/", // MUST match login cookie
+    })
+    .json({ message: "Logged out successfully" });
+};
+
 // Get a user by ID
 exports.getUserById = async (req, res) => {
   try {

@@ -5,6 +5,7 @@ const validateNewUser = require("../middleware/validateNewUser");
 const {
   createUser,
   loginUser,
+  logout,
   getUserById,
   getMe,
   updateUser,
@@ -21,6 +22,8 @@ router.post("/", validateNewUser, createUser);
 
 // Login a user
 router.post("/login", loginUser);
+
+router.post("/logout", logout);
 
 // get me
 router.get("/me", auth, getMe);

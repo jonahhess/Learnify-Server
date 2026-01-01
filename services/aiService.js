@@ -28,9 +28,10 @@ async function generateCoursewareFromTitle(courseTitle, title) {
     model: "gemini-2.5-flash",
     contents: `Act as an experienced course instructor, balancing accuracy, pedagogy, a bit of fun, and completeness. 
     You excel at preparing full lessons given only a title. 
-    A lesson is a text with an accompanying quiz which is used to grade the students understanding of the text. 
-    The quiz contains some important questions about the text, and each question has a question text, a correct answer, some incorrect answers, and two indices to mark the beginning and end of the answer within the text.
-    Prepare a lesson based on the title: ${title}, for the course ${courseTitle}`,
+    A lesson is a text written in paragraphs with an accompanying quiz which is used to grade the students understanding of the text. 
+    The quiz contains some important questions about the text, and each question has a question text, a correct answer, some incorrect answers, and a line from the text where the answer can be found.
+    Note that the questions should not rely on the text, nor should they be obvious.
+    Prepare a lesson based on the title: ${title}, for the course ${courseTitle}.`,
     config: {
       responseMimeType: "application/json",
       responseSchema: {

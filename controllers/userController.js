@@ -234,6 +234,20 @@ exports.startCourseware = async (req, res) => {
       });
     }
 
+    const nextIndex = index + 1;
+    if (nextIndex < course.coursewares.length) {
+      const nextCourseware = course.coursewares[nextIndex];
+      if (!nextCourseware.coursewareId) {
+        // async fire-and-forget
+        doGenerateCourseware(course.title, course._id, nextCourseware.title)
+          .then((newCourseware) => {
+            nextCourseware.coursewareId = newCourseware._id;
+            course.save().catch(console.error);
+          })
+          .catch(console.error);
+      }
+    }
+
     await user.save();
 
     res.send("added courseware successfully");
@@ -241,6 +255,20 @@ exports.startCourseware = async (req, res) => {
     res.status(400).json({ message: err.message });
   }
 };
+
+// helper
+async function waitForNextCourseware(
+  coursewareId,
+  maxRetries = 20,
+  delayMs = 5000
+) {
+  for (let i = 0; i < maxRetries; i++) {
+    const next = await Courseware.findById(coursewareId);
+    if (next) return next; // Found it
+    await new Promise((resolve) => setTimeout(resolve, delayMs));
+  }
+  throw new Error("Next courseware did not become available in time");
+}
 
 // submit a courseware by ID
 exports.submitCourseware = async (req, res) => {
@@ -300,14 +328,15 @@ exports.submitCourseware = async (req, res) => {
       const nextIndex = index + 1;
       const nextCourseware = course.coursewares[nextIndex];
       const title = nextCourseware.title;
+      let coursewareId =
+        nextCourseware.coursewareId ||
+        (await waitForNextCourseware(nextCourseware.coursewareId));
 
       const entry = {
         title,
         courseId,
         index: nextIndex,
-        coursewareId:
-          nextCourseware.coursewareId ||
-          (await doGenerateCourseware(courseTitle, courseId, title)._id),
+        coursewareId,
       };
 
       // if (!entry.coursewareId) {
@@ -338,15 +367,6 @@ exports.submitCourseware = async (req, res) => {
     }
 
     await Promise.all(promises);
-
-    let correctFlag = false;
-    for (let i = 0; !correctFlag && i < 20; i++) {
-      const testUser = await User.findById(req.userId);
-      correctFlag = testUser.myCurrentCourses.some((c) =>
-        c.coursewareId?.equals(entry.coursewareId)
-      );
-      await new Promise((resolve) => setTimeout(resolve, 5000));
-    }
     res.send("submitted courseware successfully");
   } catch (err) {
     res.status(400).json({ message: err.message });

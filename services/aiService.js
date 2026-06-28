@@ -23,7 +23,7 @@ async function generateCourseOutlineFromTitle(title) {
   return response.text;
 }
 
-async function generateCoursewareFromTitle(courseTitle, title) {
+async function generateCoursewareFromTitle(courseTitle, title, lessonIndex) {
   const response = await ai.models.generateContent({
     model: "gemini-2.5-flash",
     contents: `Act as an experienced course instructor, balancing accuracy, pedagogy, a bit of fun, and completeness. 
@@ -31,7 +31,8 @@ async function generateCoursewareFromTitle(courseTitle, title) {
     A lesson is a text written clearly using Markdown, and with an accompanying quiz which is used to grade the students understanding of the text. 
     The quiz contains some important questions about the text, and each question has a question text, a correct answer, some incorrect answers, and a line from the text where the answer can be found.
     Note that the questions should not rely on the text, and make it hard to guess the right answer.
-    Prepare a lesson based on the title: ${title}, for the course ${courseTitle}.`,
+    Prepare a lesson based on the title: ${title}, for the course ${courseTitle}.
+    This is lesson ${lessonIndex}.`,
     config: {
       responseMimeType: "application/json",
       responseSchema: {
@@ -66,8 +67,8 @@ async function generateFullCourseByTitle(title) {
   const outline = await generateCourseOutlineFromTitle(title);
   const jsonOutline = JSON.parse(outline) || [];
   const promises = [];
-  for (const entry of jsonOutline) {
-    promises.push(generateCoursewareFromTitle(title, entry));
+  for (const [entry, index] of jsonOutline.entries()) {
+    promises.push(generateCoursewareFromTitle(title, entry, index + 1));
   }
 
   const coursewares = await Promise.all(promises);

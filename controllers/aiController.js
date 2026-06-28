@@ -26,12 +26,12 @@ exports.generateCourseOutline = async (req, res) => {
     const newCourseware = await this.doGenerateCourseware(
       title,
       newCourse._id,
-      coursewares[0].title
+      coursewares[0].title,
     );
 
     newCourse.updateOne(
       { "coursewares.id": 0 },
-      { $set: { "coursewares.$.coursewareId": newCourseware._id } }
+      { $set: { "coursewares.$.coursewareId": newCourseware._id } },
     );
     await newCourse.save();
 
@@ -53,10 +53,14 @@ exports.doGenerateCourseware = async (courseTitle, courseId, title) => {
   }
 
   const index = courseToUpdate.coursewares.findIndex(
-    (cw) => cw.title === title
+    (cw) => cw.title === title,
   );
 
-  const courseware = await generateCoursewareFromTitle(courseTitle, title);
+  const courseware = await generateCoursewareFromTitle(
+    courseTitle,
+    title,
+    index + 1,
+  );
 
   const toJson = JSON.parse(courseware);
   const { text, quiz } = toJson;
@@ -70,7 +74,7 @@ exports.doGenerateCourseware = async (courseTitle, courseId, title) => {
         coursewareId,
         courseId: new mongoose.Types.ObjectId(courseId),
         ...question,
-      })
+      }),
     );
   }
   const all = await Promise.allSettled(promises);
@@ -120,7 +124,7 @@ exports.doGenerateCourseware = async (courseTitle, courseId, title) => {
           "elem.title": newCourseware.title,
         },
       ],
-    }
+    },
   );
 
   return newCourseware;
@@ -132,7 +136,7 @@ exports.generateCourseware = async (req, res) => {
     const newCourseware = await doGenerateCourseware(
       courseTitle,
       courseId,
-      title
+      title,
     );
 
     res.json(newCourseware);

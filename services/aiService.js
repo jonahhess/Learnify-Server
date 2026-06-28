@@ -30,7 +30,7 @@ async function generateCoursewareFromTitle(courseTitle, title) {
     You excel at preparing full lessons given only a title. 
     A lesson is a text written clearly using Markdown, and with an accompanying quiz which is used to grade the students understanding of the text. 
     The quiz contains some important questions about the text, and each question has a question text, a correct answer, some incorrect answers, and a line from the text where the answer can be found.
-    Note that the questions should not rely on the text, nor should they be obvious.
+    Note that the questions should not rely on the text, and make it hard to guess the right answer.
     Prepare a lesson based on the title: ${title}, for the course ${courseTitle}.`,
     config: {
       responseMimeType: "application/json",

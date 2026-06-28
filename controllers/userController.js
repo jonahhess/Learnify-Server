@@ -164,7 +164,7 @@ exports.startCourse = async (req, res) => {
         index: 0,
         coursewareId:
           firstCourseware._doc.coursewareId ||
-          (await doGenerateCourseware(title, courseId, coursewareTitle)._id),
+          (await doGenerateCourseware(title, courseId, coursewareTitle))._id,
       };
 
       user.myCurrentCoursewares.push(entry);
@@ -195,7 +195,7 @@ exports.startCourseware = async (req, res) => {
 
     if (
       user.myCurrentCoursewares.some((c) =>
-        c.coursewareId.equals(courseware._id)
+        c.coursewareId.equals(courseware._id),
       )
     ) {
       return res.status(400).json({ message: "courseware already exists!" });
@@ -222,7 +222,7 @@ exports.startCourseware = async (req, res) => {
     const course = await Course.findById(courseId);
     const coursewares = course?.coursewares;
     const index = coursewares?.findIndex(
-      (c) => c.coursewareId === req.params.id || c.title === title
+      (c) => c.coursewareId === req.params.id || c.title === title,
     );
 
     if (length) {
@@ -259,7 +259,7 @@ exports.submitCourseware = async (req, res) => {
 
     if (
       !user.myCurrentCoursewares.some(
-        (c) => c._doc.coursewareId?.toString() === req.params.coursewareId
+        (c) => c._doc.coursewareId?.toString() === req.params.coursewareId,
       )
     ) {
       return res
@@ -275,7 +275,7 @@ exports.submitCourseware = async (req, res) => {
     // move courseware from current to completed
 
     const coursewaresExceptCurrent = user.myCurrentCoursewares.filter(
-      (c) => !c.coursewareId?.equals(coursewareId)
+      (c) => !c.coursewareId?.equals(coursewareId),
     );
 
     user.myCurrentCoursewares = coursewaresExceptCurrent;
@@ -287,133 +287,25 @@ exports.submitCourseware = async (req, res) => {
     const length = course.coursewares?.length;
     const lengthCompletedCoursewaresOfCourse =
       user.myCompletedCoursewares.filter((c) =>
-        c.courseId.equals(courseId)
+        c.courseId.equals(courseId),
       ).length;
 
     if (length === lengthCompletedCoursewaresOfCourse) {
       // completed the course! congrats
       user.myCompletedCourses.push({ title: courseTitle, courseId, length });
       user.myCurrentCourses = user.myCurrentCourses.filter(
-        (c) => c.courseId !== courseId
+        (c) => c.courseId !== courseId,
       );
     } else {
       const nextIndex = index + 1;
       const nextCourseware = course.coursewares[nextIndex];
       const title = nextCourseware.title;
-
-      const entry = {
-        title,
-        courseId,
-        index: nextIndex,
-        coursewareId:
-          nextCourseware.coursewareId ||
-          (await doGenerateCourseware(courseTitle, courseId, title)._id),
-      };
-
-      // if (!entry.coursewareId) {
-      //   throw {message: "failed to create new courseware"}
-      //   }
-
-      user.myCurrentCoursewares.push(entry);
-    }
-
-    const quiz = courseware.quiz.map((q) => q.questionId);
-    const userId = req.userId;
-    const now = new Date();
-    const nextReviewDate = now.setDate(now.getDate() + 1);
-
-    const promises = [user.save()];
-    for (const questionId of quiz) {
-      promises.push(
-        ReviewCard.create({
-          questionId,
-          courseId,
-          coursewareId,
-          userId,
-          reviews: 0,
-          successes: 0,
-          nextReviewDate,
-        })
-      );
-    }
-
-    await Promise.all(promises);
-
-    let correctFlag = false;
-    for (let i = 0; !correctFlag && i < 20; i++) {
-      const testUser = await User.findById(req.userId);
-      correctFlag = testUser.myCurrentCourses.some((c) =>
-        c.coursewareId?.equals(entry.coursewareId)
-      );
-      await new Promise((resolve) => setTimeout(resolve, 5000));
-    }
-    res.send("submitted courseware successfully");
-  } catch (err) {
-    res.status(400).json({ message: err.message });
-  }
-};
-
-// submit a courseware by ID
-exports.submitCourseware = async (req, res) => {
-  try {
-    const [user, courseware] = await Promise.all([
-      User.findById(req.userId),
-      Courseware.findById(req.params.coursewareId),
-    ]);
-
-    if (!user)
-      return res
-        .status(500)
-        .json({ message: "user not found. This is awkward" });
-    if (!courseware)
-      return res.status(404).json({ message: "Courseware not found" });
-
-    if (
-      !user.myCurrentCoursewares.some(
-        (c) => c._doc.coursewareId?.toString() === req.params.coursewareId
-      )
-    ) {
-      return res
-        .status(400)
-        .json({ message: "courseware not registered for user" });
-    }
-
-    const courseId = courseware.courseId;
-    const coursewareId = courseware._id;
-    const title = courseware.title;
-    const index = courseware._doc.index;
-
-    // move courseware from current to completed
-
-    const coursewaresExceptCurrent = user.myCurrentCoursewares.filter(
-      (c) => !c.coursewareId?.equals(coursewareId)
-    );
-
-    user.myCurrentCoursewares = coursewaresExceptCurrent;
-    user.myCompletedCoursewares.push({ courseId, coursewareId, title, index });
-
-    // check if user finished the course - if so move course to completed
-    const course = await Course.findById(courseId);
-    const courseTitle = course.title;
-    const length = course.coursewares?.length;
-    const lengthCompletedCoursewaresOfCourse =
-      user.myCompletedCoursewares.filter((c) =>
-        c.courseId.equals(courseId)
-      ).length;
-
-    if (length === lengthCompletedCoursewaresOfCourse) {
-      // completed the course! congrats
-      user.myCompletedCourses.push({ title: courseTitle, courseId, length });
-      user.myCurrentCourses = user.myCurrentCourses.filter(
-        (c) => c.courseId !== courseId
-      );
-    } else {
-      const nextIndex = index + 1;
-      const nextCourseware = course.coursewares[nextIndex];
-      const title = nextCourseware.title;
-      let coursewareId =
-        nextCourseware.coursewareId ||
-        (await waitForNextCourseware(nextCourseware.coursewareId));
+      let coursewareId = nextCourseware.coursewareId;
+      if (!coursewareId) {
+        coursewareId = (
+          await doGenerateCourseware(courseTitle, courseId, title)
+        )._id;
+      }
 
       const entry = {
         title,
@@ -445,7 +337,7 @@ exports.submitCourseware = async (req, res) => {
           reviews: 0,
           successes: 0,
           nextReviewDate,
-        })
+        }),
       );
     }
 
@@ -501,13 +393,13 @@ exports.batchSubmitReviewCards2 = async (req, res) => {
       performReview(
         card,
         !!reviewedCards.find((rc) => rc.questionId === card._id.toString())
-          ?.success
+          ?.success,
       );
     }
 
     const idsReviewed = reviewCards.map((rc) => rc.questionId.toString());
     const reviewCardsExceptFinished = myReviewCards.filter(
-      (rc) => !idsReviewed.includes(rc.questionId.toString())
+      (rc) => !idsReviewed.includes(rc.questionId.toString()),
     );
     user.myReviewCards = reviewCardsExceptFinished;
 
@@ -548,7 +440,7 @@ exports.batchSubmitReviewCards = async (req, res) => {
     const ops = reviewCards
       .map((card) => {
         const match = reviewedCards.find(
-          (rc) => rc._id === card._id.toString()
+          (rc) => rc._id === card._id.toString(),
         );
         if (!match) return null;
 
@@ -578,7 +470,7 @@ exports.batchSubmitReviewCards = async (req, res) => {
     // remove reviewed cards from user.myReviewCards
     const idsReviewed = reviewedCards.map((rc) => rc._id.toString());
     user.myReviewCards = myReviewCards.filter(
-      (rc) => !idsReviewed.includes(rc._id.toString())
+      (rc) => !idsReviewed.includes(rc._id.toString()),
     );
 
     await user.save();

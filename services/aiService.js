@@ -54,6 +54,12 @@ async function generateCoursewareFromTitle(courseTitle, title, lessonIndex) {
               properties: {
                 questionText: { type: Type.STRING },
                 correctAnswer: { type: Type.STRING },
+                incorrectAnswers: {
+                  type: Type.ARRAY,
+                  items: {
+                    type: Type.String,
+                  },
+                },
                 correctAnswerQuote: { type: Type.STRING },
               },
             },

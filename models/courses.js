@@ -34,10 +34,13 @@ const courseSchema = new mongoose.Schema(
     keywords: {
       type: [String],
     },
+    description: {
+      type: String,
+    },
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 module.exports = mongoose.model("courses", courseSchema);

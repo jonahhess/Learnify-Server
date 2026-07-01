@@ -127,38 +127,23 @@ exports.getMe = async (req, res) => {
 // start a course by ID
 exports.startCourse = async (req, res) => {
   try {
-    const user = await User.findById(req.userId);
     const course = await Course.findById(req.body.id);
 
     if (!course) return res.status(404).json({ message: "Course not found" });
-    if (!user)
-      return res
-        .status(404)
-        .json({ message: "User not found. This is awkward" });
-
-    // Ensure myCurrentCourses is an array
-    user.myCurrentCourses = user.myCurrentCourses || [];
-
-    if (user.myCurrentCourses.some((c) => c.courseId.equals(course._id))) {
-      return res.status(400).json({ message: "Course already exists!" });
-    }
-
-    if (user.myCurrentCourses.length >= 5) {
-      return res.status(400).json({ message: "Too many courses" });
-    }
-
-    // assigning course to user
     const courseId = course._id;
     const title = course.title;
     const length = course.coursewares?.length;
-
-    user.myCurrentCourses.push({ courseId, title, length });
+    const update = {
+      $push: {
+        myCurrentCourses: { courseId, title, length },
+      },
+    };
 
     if (length) {
       const firstCourseware = course.coursewares[0];
       const coursewareTitle = firstCourseware.title;
 
-      const entry = {
+      update.$push.myCurrentCoursewares = {
         courseId,
         title: coursewareTitle,
         index: 0,
@@ -166,11 +151,45 @@ exports.startCourse = async (req, res) => {
           firstCourseware._doc.coursewareId ||
           (await doGenerateCourseware(title, courseId, coursewareTitle))._id,
       };
-
-      user.myCurrentCoursewares.push(entry);
     }
 
-    await user.save();
+    const updatedUser = await User.findOneAndUpdate(
+      {
+        _id: req.userId,
+        myCurrentCourses: { $not: { $elemMatch: { courseId } } },
+        ...(length
+          ? {
+              myCurrentCoursewares: {
+                $not: { $elemMatch: { courseId, index: 0 } },
+              },
+            }
+          : {}),
+        $expr: { $lt: [{ $size: "$myCurrentCourses" }, 5] },
+      },
+      update,
+      { new: true },
+    );
+
+    if (!updatedUser) {
+      const user = await User.findById(req.userId).select(
+        "_id myCurrentCourses",
+      );
+      if (!user) {
+        return res
+          .status(404)
+          .json({ message: "User not found. This is awkward" });
+      }
+      if (user.myCurrentCourses.some((c) => c.courseId.equals(courseId))) {
+        return res.status(400).json({ message: "Course already exists!" });
+      }
+      if (user.myCurrentCourses.length >= 5) {
+        return res.status(400).json({ message: "Too many courses" });
+      }
+      return res
+        .status(409)
+        .json({ message: "Failed to start course due to concurrent update" });
+    }
+
     res.send("added course successfully");
   } catch (err) {
     res.status(400).json({ message: err.message });
@@ -180,61 +199,88 @@ exports.startCourse = async (req, res) => {
 // start a courseware by ID
 exports.startCourseware = async (req, res) => {
   try {
-    const [user, courseware] = await Promise.all([
-      User.findById(req.userId),
-      Courseware.findById(req.body.id),
-    ]);
+    const courseware = await Courseware.findById(req.body.id);
 
     // error handling
     if (!courseware)
       return res.status(404).json({ message: "Courseware not found" });
-    if (!user)
-      return res
-        .status(500)
-        .json({ message: "user not found. This is awkward" });
-
-    if (
-      user.myCurrentCoursewares.some((c) =>
-        c.coursewareId.equals(courseware._id),
-      )
-    ) {
-      return res.status(400).json({ message: "courseware already exists!" });
-    }
-    if (user.myCurrentCoursewares.length >= 15) {
-      return res.status(400).json({ message: "Too many coursewares" });
-    }
-
-    if (
-      !user.myCurrentCourses.some((c) => c.courseId.equals(courseware.courseId))
-    ) {
-      return res
-        .status(400)
-        .json({ message: "Cannot start courseware before starting course" });
-    }
 
     // assigning course to user
     const courseId = courseware.courseId;
     const coursewareId = courseware._id;
     const title = courseware.title;
-    const length = course.coursewares?.length;
 
     // find index of course if exists
     const course = await Course.findById(courseId);
+    if (!course) return res.status(404).json({ message: "Course not found" });
+
     const coursewares = course?.coursewares;
     const index = coursewares?.findIndex(
-      (c) => c.coursewareId === req.params.id || c.title === title,
+      (c) => c.coursewareId?.toString() === coursewareId.toString(),
     );
 
-    if (length) {
-      user.myCurrentCoursewares.push({
-        courseId,
-        coursewareId,
-        title,
-        index,
-      });
+    const updatedUser = await User.findOneAndUpdate(
+      {
+        _id: req.userId,
+        myCurrentCoursewares: { $not: { $elemMatch: { coursewareId } } },
+        myCurrentCourses: { $elemMatch: { courseId } },
+        $expr: { $lt: [{ $size: "$myCurrentCoursewares" }, 15] },
+      },
+      {
+        $push: {
+          myCurrentCoursewares: {
+            courseId,
+            coursewareId,
+            title,
+            index,
+          },
+        },
+      },
+      { new: true },
+    );
+
+    if (!updatedUser) {
+      const user = await User.findById(req.userId).select(
+        "_id myCurrentCourses myCurrentCoursewares",
+      );
+      if (!user) {
+        return res
+          .status(500)
+          .json({ message: "user not found. This is awkward" });
+      }
+      if (
+        user.myCurrentCoursewares.some((c) =>
+          c.coursewareId.equals(coursewareId),
+        )
+      ) {
+        return res.status(400).json({ message: "courseware already exists!" });
+      }
+      if (user.myCurrentCoursewares.length >= 15) {
+        return res.status(400).json({ message: "Too many coursewares" });
+      }
+      if (!user.myCurrentCourses.some((c) => c.courseId.equals(courseId))) {
+        return res
+          .status(400)
+          .json({ message: "Cannot start courseware before starting course" });
+      }
+      return res
+        .status(409)
+        .json({
+          message: "Failed to start courseware due to concurrent update",
+        });
     }
 
-    await user.save();
+    if (index !== -1 && index !== undefined) {
+      await User.updateOne(
+        {
+          _id: req.userId,
+          "myCurrentCoursewares.coursewareId": coursewareId,
+        },
+        {
+          $set: { "myCurrentCoursewares.$.index": index },
+        },
+      );
+    }
 
     res.send("added courseware successfully");
   } catch (err) {
@@ -308,8 +354,8 @@ exports.submitCourseware = async (req, res) => {
       }
 
       const entry = {
-        title,
         courseId,
+        title,
         index: nextIndex,
         coursewareId,
       };

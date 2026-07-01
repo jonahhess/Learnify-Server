@@ -8,23 +8,9 @@ const { errorHandler } = require("./middleware/errorHandler");
 const path = require("path");
 
 const cookieParser = require("cookie-parser");
-const cors = require("cors");
 
 const app = express();
 app.set("trust proxy", 1);
-
-const FRONTEND_URL = process.env.FRONTEND_URL;
-
-app.use(
-  cors({
-    origin: FRONTEND_URL,
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-  }),
-);
-
-//app.options("*", cors());
 
 app.use(express.json());
 app.use(cookieParser());
@@ -40,7 +26,7 @@ app.use("/", apiRoutes);
 app.use(express.static(path.join(__dirname, "dist")));
 
 // 3. Handle React Routing (SPA fallback)
-app.get("*", (req, res) => {
+app.get("/{*splat}", (req, res) => {
   res.sendFile(path.join(__dirname, "dist", "index.html"));
 });
 

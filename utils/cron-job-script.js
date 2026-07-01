@@ -7,7 +7,7 @@
 // 4. Paste the aggregation pipeline into the trigger function.
 
 exports = async function () {
-  const db = context.services.get("mongodb-atlas").db("yourDatabase");
+  const db = context.services.get("Cluster1").db("test");
   const reviewCards = db.collection("reviewcards");
 
   await reviewCards

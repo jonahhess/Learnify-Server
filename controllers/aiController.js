@@ -8,7 +8,9 @@ const Course = require("../models/courses");
 const Courseware = require("../models/coursewares");
 const Question = require("../models/questions");
 const User = require("../models/users");
-const leven = require("leven");
+const levenModule = require("leven");
+const leven =
+  typeof levenModule === "function" ? levenModule : levenModule.default;
 
 const { default: mongoose } = require("mongoose");
 

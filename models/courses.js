@@ -31,11 +31,11 @@ const courseSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
     },
-    keywords: {
-      type: [String],
-    },
     description: {
       type: String,
+    },
+    keywords: {
+      type: [String],
     },
   },
   {

@@ -8,8 +8,26 @@ const Course = require("../models/courses");
 const Courseware = require("../models/coursewares");
 const Question = require("../models/questions");
 const User = require("../models/users");
+const leven = require("leven");
 
 const { default: mongoose } = require("mongoose");
+
+function resolveAnswerIndexes(pattern, text) {
+  if (!pattern || !text || pattern.length > text.length) return {};
+  let best = { dist: Infinity, start: -1 };
+  for (let i = 0; i <= text.length - pattern.length; i += 1) {
+    const dist = leven(
+      pattern.toLowerCase(),
+      text.slice(i, i + pattern.length).toLowerCase(),
+    );
+    if (dist < best.dist) best = { dist, start: i };
+  }
+  if (best.start < 0) return {};
+  return {
+    answerStartIndex: best.start,
+    answerEndIndex: best.start + pattern.length - 1,
+  };
+}
 
 exports.generateCourseOutline = async (req, res) => {
   try {
@@ -76,11 +94,19 @@ exports.doGenerateCourseware = async (courseTitle, courseId, title) => {
 
   const promises = [];
   for (const question of quiz) {
+    const pattern = question.correctAnswerQuote || question.correctAnswer;
+    const { answerStartIndex, answerEndIndex } = resolveAnswerIndexes(
+      pattern,
+      text,
+    );
+
     promises.push(
       Question.create({
         coursewareId,
         courseId: new mongoose.Types.ObjectId(courseId),
         ...question,
+        answerStartIndex,
+        answerEndIndex,
       }),
     );
   }
@@ -113,7 +139,6 @@ exports.doGenerateCourseware = async (courseTitle, courseId, title) => {
   });
   await courseToUpdate.save();
 
-  // TODO update user that current courseware should now have link to coursewareId (like above)
   await User.updateMany(
     {
       "myCurrentCoursewares.courseId": newCourseware.courseId,

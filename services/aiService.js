@@ -8,10 +8,18 @@ async function generateCourseOutlineFromTitle(title) {
     model: "gemini-2.5-flash",
     contents: `Act as an experienced course instructor, balancing accuracy, pedagogy, a bit of fun, and completeness. 
       You excel at preparing course outlines for a given title.
-      Prepare a course outline based on the title: '${title}`,
+      Prepare a course outline based on the title: '${title}. 
+      Add a short description and keywords relevant for the course.`,
     config: {
       responseMimeType: "application/json",
       responseSchema: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.STRING,
+        },
+      },
+      description: { type: Type.STRING },
+      keywords: {
         type: Type.ARRAY,
         items: {
           type: Type.STRING,
@@ -32,7 +40,7 @@ async function generateCoursewareFromTitle(courseTitle, title, lessonIndex) {
     The quiz contains some important questions about the text, and each question has a question text, a correct answer, some incorrect answers, and a full direct quote from the text containing the correct answer.
     Note that the questions should not rely on the text, and make it hard to guess the right answer.
     Prepare a lesson based on the title: ${title}, for the course ${courseTitle}.
-    This is lesson ${lessonIndex}. Add a short description and keywords relevant for the course.`,
+    This is lesson ${lessonIndex}.`,
     config: {
       responseMimeType: "application/json",
       responseSchema: {
@@ -48,13 +56,6 @@ async function generateCoursewareFromTitle(courseTitle, title, lessonIndex) {
                 correctAnswer: { type: Type.STRING },
                 correctAnswerQuote: { type: Type.STRING },
               },
-            },
-          },
-          description: { type: Type.STRING },
-          keywords: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.STRING,
             },
           },
         },

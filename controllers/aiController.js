@@ -22,7 +22,14 @@ exports.generateCourseOutline = async (req, res) => {
       };
     });
 
-    const newCourse = await Course.create({ title, coursewares });
+    const { description, keywords } = toJson;
+
+    const newCourse = await Course.create({
+      title,
+      coursewares,
+      description,
+      keywords,
+    });
     const newCourseware = await this.doGenerateCourseware(
       title,
       newCourse._id,

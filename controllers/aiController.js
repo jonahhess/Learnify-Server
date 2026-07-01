@@ -106,9 +106,9 @@ exports.doGenerateCourseware = async (courseTitle, courseId, title) => {
       Question.create({
         coursewareId,
         courseId: new mongoose.Types.ObjectId(courseId),
-        ...question,
         answerStartIndex,
         answerEndIndex,
+        ...question,
       }),
     );
   }

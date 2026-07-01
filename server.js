@@ -5,6 +5,7 @@ const logger = require("./middleware/logger");
 const limiter = require("./middleware/rateLimiter");
 const apiRoutes = require("./routes/api");
 const { errorHandler } = require("./middleware/errorHandler");
+const path = require("path");
 
 const cookieParser = require("cookie-parser");
 const cors = require("cors");
@@ -20,7 +21,7 @@ app.use(
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
-  })
+  }),
 );
 
 //app.options("*", cors());
@@ -35,8 +36,16 @@ connectDB();
 
 app.use("/", apiRoutes);
 
+// 2. Serve React static assets
+app.use(express.static(path.join(__dirname, "dist")));
+
+// 3. Handle React Routing (SPA fallback)
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "dist", "index.html"));
+});
+
 app.use(errorHandler);
 
 app.listen(process.env.PORT || 4000, () =>
-  console.log(`Server running on port ${process.env.PORT || 4000}`)
+  console.log(`Server running on port ${process.env.PORT || 4000}`),
 );

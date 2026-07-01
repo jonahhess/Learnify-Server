@@ -17,12 +17,12 @@ async function generateCourseOutlineFromTitle(title) {
         items: {
           type: Type.STRING,
         },
-      },
-      description: { type: Type.STRING },
-      keywords: {
-        type: Type.ARRAY,
-        items: {
-          type: Type.STRING,
+        description: { type: Type.STRING },
+        keywords: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.STRING,
+          },
         },
       },
     },

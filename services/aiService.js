@@ -29,10 +29,10 @@ async function generateCoursewareFromTitle(courseTitle, title, lessonIndex) {
     contents: `Act as an experienced course instructor, balancing accuracy, pedagogy, a bit of fun, and completeness. 
     You excel at preparing full lessons given only a title. 
     A lesson is a text written clearly using Markdown, and with an accompanying quiz which is used to grade the students understanding of the text. 
-    The quiz contains some important questions about the text, and each question has a question text, a correct answer, some incorrect answers, and a line from the text where the answer can be found.
+    The quiz contains some important questions about the text, and each question has a question text, a correct answer, some incorrect answers, and a full direct quote from the text containing the correct answer.
     Note that the questions should not rely on the text, and make it hard to guess the right answer.
     Prepare a lesson based on the title: ${title}, for the course ${courseTitle}.
-    This is lesson ${lessonIndex}.`,
+    This is lesson ${lessonIndex}. Add a short description and keywords relevant for the course.`,
     config: {
       responseMimeType: "application/json",
       responseSchema: {
@@ -46,13 +46,15 @@ async function generateCoursewareFromTitle(courseTitle, title, lessonIndex) {
               properties: {
                 questionText: { type: Type.STRING },
                 correctAnswer: { type: Type.STRING },
-                incorrectAnswers: {
-                  type: Type.ARRAY,
-                  items: { type: Type.STRING },
-                },
-                answerStartIndex: { type: Type.INTEGER },
-                answerEndIndex: { type: Type.INTEGER },
+                correctAnswerQuote: { type: Type.STRING },
               },
+            },
+          },
+          description: { type: Type.STRING },
+          keywords: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.STRING,
             },
           },
         },

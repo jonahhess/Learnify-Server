@@ -3,6 +3,7 @@ const express = require("express");
 const connectDB = require("./db");
 const logger = require("./middleware/logger");
 const limiter = require("./middleware/rateLimiter");
+const { mongoReady } = require("./middleware/mongoReady");
 const apiRoutes = require("./routes/api");
 const { errorHandler } = require("./middleware/errorHandler");
 const path = require("path");
@@ -18,9 +19,7 @@ app.use(cookieParser());
 app.use(logger);
 app.use(limiter);
 
-connectDB();
-
-app.use("/", apiRoutes);
+app.use("/", mongoReady, apiRoutes);
 
 // 2. Serve React static assets
 app.use(express.static(path.join(__dirname, "dist")));
@@ -32,6 +31,16 @@ app.get("/{*splat}", (req, res) => {
 
 app.use(errorHandler);
 
-app.listen(process.env.PORT || 4000, () =>
-  console.log(`Server running on port ${process.env.PORT || 4000}`),
-);
+const startServer = async () => {
+  try {
+    await connectDB();
+    app.listen(process.env.PORT || 4000, () =>
+      console.log(`Server running on port ${process.env.PORT || 4000}`),
+    );
+  } catch (err) {
+    console.error(`Failed to connect to MongoDB: ${err.message}`);
+    process.exit(1);
+  }
+};
+
+startServer();

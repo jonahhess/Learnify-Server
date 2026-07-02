@@ -263,11 +263,9 @@ exports.startCourseware = async (req, res) => {
           .status(400)
           .json({ message: "Cannot start courseware before starting course" });
       }
-      return res
-        .status(409)
-        .json({
-          message: "Failed to start courseware due to concurrent update",
-        });
+      return res.status(409).json({
+        message: "Failed to start courseware due to concurrent update",
+      });
     }
 
     if (index !== -1 && index !== undefined) {
@@ -370,7 +368,7 @@ exports.submitCourseware = async (req, res) => {
     const quiz = courseware.quiz.map((q) => q.questionId);
     const userId = req.userId;
     const now = new Date();
-    const nextReviewDate = now.setDate(now.getDate() + 1);
+    const nextReviewDate = now.getDate();
 
     const promises = [user.save()];
     for (const questionId of quiz) {

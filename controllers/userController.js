@@ -3,6 +3,7 @@ const Course = require("../models/courses");
 const Courseware = require("../models/coursewares");
 const ReviewCard = require("../models/reviewCards");
 const { doGenerateCourseware } = require("./aiController");
+const mongoose = require("mongoose");
 
 const jwt = require("jsonwebtoken");
 
@@ -205,20 +206,31 @@ exports.startCourseware = async (req, res) => {
     if (!courseware)
       return res.status(404).json({ message: "Courseware not found" });
 
-    // assigning course to user
+    // test if course exists
     const courseId = courseware.courseId;
-    const coursewareId = courseware._id;
-    const title = courseware.title;
-
-    // find index of course if exists
     const course = await Course.findById(courseId);
     if (!course) return res.status(404).json({ message: "Course not found" });
 
+    // test if courseware index is the same as the course.coursware index
+    // by comparing their ObjectId fields
+    // seems very extra. worthwhile to figure out if mismatch can ever occur
+    const coursewareId = courseware._id;
     const coursewares = course?.coursewares;
-    const index = coursewares?.findIndex(
+    let index = coursewares?.findIndex(
       (c) => c.coursewareId?.toString() === coursewareId.toString(),
     );
+    if (index === -1 || index === undefined) {
+      if (Number.isInteger(courseware.index) && courseware.index >= 0) {
+        index = courseware.index;
+      } else {
+        return res.status(409).json({
+          message: "Courseware index is missing from course outline",
+        });
+      }
+    }
 
+    // user may take courseware
+    const title = courseware.title;
     const updatedUser = await User.findOneAndUpdate(
       {
         _id: req.userId,
@@ -239,14 +251,13 @@ exports.startCourseware = async (req, res) => {
       { new: true },
     );
 
+    // extra logic to get the exact error message to the client
     if (!updatedUser) {
       const user = await User.findById(req.userId).select(
         "_id myCurrentCourses myCurrentCoursewares",
       );
       if (!user) {
-        return res
-          .status(500)
-          .json({ message: "user not found. This is awkward" });
+        return res.status(404).json({ message: "User not found" });
       }
       if (
         user.myCurrentCoursewares.some((c) =>
@@ -268,16 +279,72 @@ exports.startCourseware = async (req, res) => {
       });
     }
 
-    if (index !== -1 && index !== undefined) {
-      await User.updateOne(
-        {
-          _id: req.userId,
-          "myCurrentCoursewares.coursewareId": coursewareId,
+    // async start generating the next courseware while user is working on current
+    const nextIndex = index + 1;
+    const nextCourseware = coursewares?.[nextIndex];
+    if (nextCourseware && !nextCourseware.coursewareId) {
+      const now = new Date();
+      const leaseUntil = new Date(now.getTime() + 10 * 60 * 1000);
+      const generationToken = new mongoose.Types.ObjectId();
+      const basePath = `coursewares.${nextIndex}`;
+
+      const reserveFilter = {
+        _id: courseId,
+        [`${basePath}.coursewareId`]: { $exists: false },
+        $or: [
+          { [`${basePath}.generationState`]: { $exists: false } },
+          { [`${basePath}.generationState`]: { $ne: "generating" } },
+          { [`${basePath}.generationLeaseUntil`]: { $lte: now } },
+        ],
+      };
+      const reserveUpdate = {
+        $set: {
+          [`${basePath}.generationState`]: "generating",
+          [`${basePath}.generationLeaseUntil`]: leaseUntil,
+          [`${basePath}.generationToken`]: generationToken,
         },
-        {
-          $set: { "myCurrentCoursewares.$.index": index },
-        },
+      };
+
+      // Use an expiring lease token so stale workers do not lock this slot forever.
+      const reserved = await Course.findOneAndUpdate(
+        reserveFilter,
+        reserveUpdate,
       );
+
+      if (reserved) {
+        doGenerateCourseware(course.title, courseId, nextCourseware.title)
+          .then(async () => {
+            await Course.updateOne(
+              {
+                _id: courseId,
+                [`${basePath}.generationToken`]: generationToken,
+              },
+              {
+                $set: { [`${basePath}.generationState`]: "ready" },
+                $unset: {
+                  [`${basePath}.generationLeaseUntil`]: "",
+                  [`${basePath}.generationToken`]: "",
+                },
+              },
+            );
+          })
+          .catch(async (generationErr) => {
+            console.error("Failed to generate next courseware", generationErr);
+            await Course.updateOne(
+              {
+                _id: courseId,
+                [`${basePath}.generationToken`]: generationToken,
+              },
+              {
+                $set: { [`${basePath}.generationState`]: "idle" },
+                $unset: {
+                  [`${basePath}.generationLeaseUntil`]: "",
+                  [`${basePath}.generationToken`]: "",
+                },
+              },
+            );
+          });
+      }
     }
 
     res.send("added courseware successfully");

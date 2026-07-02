@@ -87,14 +87,15 @@ exports.getAllKeywords = async (req, res) => {
       {
         $group: {
           _id: null,
-          allKeywords: { $addToSet: "$keywordsArray" },
+          allKeywords: { $addToSet: "$keywords" },
         },
       },
     ]);
 
     // The result is an array containing one object: [ { _id: null, allKeywords: [...] } ]
-    return result.length > 0 ? result[0].allKeywords : [];
+    return res.json(result.length > 0 ? result[0].allKeywords : []);
   } catch (error) {
     console.error("Error fetching keywords:", error);
+    return res.status(500).json({ message: "Error fetching keywords" });
   }
 };

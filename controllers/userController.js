@@ -391,29 +391,6 @@ exports.submitCourseware = async (req, res) => {
       user.myCurrentCourses = user.myCurrentCourses.filter(
         (c) => c.courseId !== courseId,
       );
-    } else {
-      const nextIndex = index + 1;
-      const nextCourseware = course.coursewares[nextIndex];
-      const title = nextCourseware.title;
-      let coursewareId = nextCourseware.coursewareId;
-      if (!coursewareId) {
-        coursewareId = (
-          await doGenerateCourseware(courseTitle, courseId, title)
-        )._id;
-      }
-
-      const entry = {
-        courseId,
-        title,
-        index: nextIndex,
-        coursewareId,
-      };
-
-      // if (!entry.coursewareId) {
-      //   throw {message: "failed to create new courseware"}
-      //   }
-
-      user.myCurrentCoursewares.push(entry);
     }
 
     const quiz = courseware.quiz.map((q) => q.questionId);

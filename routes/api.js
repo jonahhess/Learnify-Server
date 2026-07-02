@@ -7,6 +7,8 @@ const coursewareRoutes = require("./coursewares");
 const reviewCardRoutes = require("./reviewCards");
 const questionRoutes = require("./questions");
 const aiRoutes = require("./ai");
+const auth = require("../middleware/auth");
+const { getAllKeywords } = require("../controllers/courseController");
 
 router.use("/users", userRoutes);
 router.use("/courses", courseRoutes);
@@ -14,6 +16,7 @@ router.use("/coursewares", coursewareRoutes);
 router.use("/review-cards", reviewCardRoutes);
 router.use("/questions", questionRoutes);
 router.use("/ai", aiRoutes);
+router.get("/keywords", auth, getAllKeywords);
 
 router.get("/health", (req, res) => {
   res.send("OK");

@@ -17,6 +17,9 @@ router.post("/", createCourse);
 // Get all courses
 router.get("/", getAllCourses);
 
+// Get all keywords for all courses
+router.get("/keywords", getAllKeywords);
+
 // Get a course by ID
 router.get("/:id", getCourseById);
 
@@ -25,8 +28,5 @@ router.put("/:id", updateCourse);
 
 // Delete a course by ID
 router.delete("/:id", deleteCourse);
-
-// Get all keywords for all courses
-router.get("/keywords", getAllKeywords);
 
 module.exports = router;

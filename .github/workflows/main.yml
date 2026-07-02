@@ -28,7 +28,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: jonahhess/learnify-server
-          token: ${{ secrets.SERVER_REPO_TOKEN }}
+          token: ${{ secrets.MODIFY_LEARNIFY_SERVER }}
           path: server
 
       - name: Replace dist

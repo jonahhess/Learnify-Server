@@ -34,15 +34,15 @@ function resolveAnswerIndexes(pattern, text) {
 exports.generateCourseOutline = async (req, res) => {
   try {
     const { title } = req.body;
-    const outline = await generateCourseOutlineFromTitle(title);
-    const toJson = JSON.parse(outline);
-    const coursewares = toJson.map((courseTitle) => {
+    const course = await generateCourseOutlineFromTitle(title);
+    const toJson = JSON.parse(course);
+    const { outline, description, keywords } = toJson;
+
+    const coursewares = outline.map((courseTitle) => {
       return {
         title: courseTitle,
       };
     });
-
-    const { description, keywords } = toJson;
 
     const newCourse = await Course.create({
       title,

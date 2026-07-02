@@ -13,15 +13,20 @@ async function generateCourseOutlineFromTitle(title) {
     config: {
       responseMimeType: "application/json",
       responseSchema: {
-        type: Type.ARRAY,
-        items: {
-          type: Type.STRING,
-        },
-        description: { type: Type.STRING },
-        keywords: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.STRING,
+        type: Type.OBJECT,
+        properties: {
+          outline: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.STRING,
+            },
+          },
+          description: { type: Type.STRING },
+          keywords: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.STRING,
+            },
           },
         },
       },

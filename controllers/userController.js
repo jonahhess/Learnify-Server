@@ -184,7 +184,7 @@ exports.startCourse = async (req, res) => {
 // start a courseware by ID
 exports.startCourseware = async (req, res) => {
   try {
-    const courseware = await Courseware.findById(req.body.id);
+    const courseware = await Courseware.findById(req.params.coursewareId);
 
     // error handling
     if (!courseware)

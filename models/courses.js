@@ -47,6 +47,7 @@ const courseSchema = new mongoose.Schema(
     },
     keywords: {
       type: [String],
+      index: true,
     },
   },
   {

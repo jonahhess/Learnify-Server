@@ -38,11 +38,16 @@ router.put(
   "/:id/coursewares/:coursewareId",
   auth,
   validateUser,
-  submitCourseware
+  submitCourseware,
 );
 
 // Start Courseware by Id
-router.post("/:id/coursewares", auth, validateUser, startCourseware);
+router.post(
+  "/:id/coursewares/:coursewareId",
+  auth,
+  validateUser,
+  startCourseware,
+);
 
 // Submit Review Cards
 router.post("/:id/reviewcards", auth, validateUser, batchSubmitReviewCards);

@@ -248,7 +248,7 @@ exports.startCourseware = async (req, res) => {
           c.coursewareId.equals(coursewareId),
         )
       ) {
-        return res.status(400).json({ message: "courseware already exists!" });
+        return res.status(200).json({ message: "courseware already exists!" });
       }
       if (user.myCurrentCoursewares.length >= 15) {
         return res.status(400).json({ message: "Too many coursewares" });

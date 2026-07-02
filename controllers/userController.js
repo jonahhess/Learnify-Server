@@ -134,40 +134,24 @@ exports.startCourse = async (req, res) => {
     const courseId = course._id;
     const title = course.title;
     const length = course.coursewares?.length;
-    const update = {
-      $push: {
-        myCurrentCourses: { courseId, title, length },
-      },
-    };
-
     if (length) {
       const firstCourseware = course.coursewares[0];
       const coursewareTitle = firstCourseware.title;
-
-      update.$push.myCurrentCoursewares = {
-        courseId,
-        title: coursewareTitle,
-        index: 0,
-        coursewareId:
-          firstCourseware._doc.coursewareId ||
-          (await doGenerateCourseware(title, courseId, coursewareTitle))._id,
-      };
+      if (!firstCourseware.coursewareId)
+        doGenerateCourseware(title, courseId, coursewareTitle);
     }
 
     const updatedUser = await User.findOneAndUpdate(
       {
         _id: req.userId,
         myCurrentCourses: { $not: { $elemMatch: { courseId } } },
-        ...(length
-          ? {
-              myCurrentCoursewares: {
-                $not: { $elemMatch: { courseId, index: 0 } },
-              },
-            }
-          : {}),
         $expr: { $lt: [{ $size: "$myCurrentCourses" }, 5] },
       },
-      update,
+      {
+        $push: {
+          myCurrentCourses: { courseId, title, length },
+        },
+      },
       { new: true },
     );
 

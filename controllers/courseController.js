@@ -76,3 +76,25 @@ exports.deleteCourse = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+// Get all keywords for all courses
+exports.getAllKeywords = async (req, res) => {
+  try {
+    const result = await Course.aggregate([
+      {
+        $unwind: "$keywords",
+      },
+      {
+        $group: {
+          _id: null,
+          allKeywords: { $addToSet: "$keywordsArray" },
+        },
+      },
+    ]);
+
+    // The result is an array containing one object: [ { _id: null, allKeywords: [...] } ]
+    return result.length > 0 ? result[0].allKeywords : [];
+  } catch (error) {
+    console.error("Error fetching keywords:", error);
+  }
+};

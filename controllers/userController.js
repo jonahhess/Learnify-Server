@@ -175,7 +175,7 @@ exports.startCourse = async (req, res) => {
         .json({ message: "Failed to start course due to concurrent update" });
     }
 
-    res.send("added course successfully");
+    res.status(200).json("added course successfully");
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
@@ -184,12 +184,33 @@ exports.startCourse = async (req, res) => {
 // start a courseware by ID
 exports.startCourseware = async (req, res) => {
   try {
-    const courseware = await Courseware.findById(req.params.coursewareId);
+    let courseware = await Courseware.findById(req.params.coursewareId);
 
-    // error handling
-    if (!courseware)
-      return res.status(404).json({ message: "Courseware not found" });
+    if (!courseware) {
+      const course = await Course.findOne({
+        $or: [
+          { "coursewares._id": req.params.coursewareId },
+          { "coursewares.coursewareId": req.params.coursewareId },
+        ],
+      });
+      if (!course) {
+        return res.status(404).json({ message: "Course not found" });
+      }
 
+      const outlineEntry = course.coursewares.find(
+        (cw) =>
+          cw._id?.toString() === req.params.coursewareId ||
+          cw.coursewareId?.toString() === req.params.coursewareId,
+      );
+      if (!outlineEntry) {
+        return res.status(404).json({ message: "Courseware not found" });
+      }
+
+      const courseTitle = course.title;
+      const courseId = course._id;
+      const title = outlineEntry.title;
+      courseware = await doGenerateCourseware(courseTitle, courseId, title);
+    }
     // test if course exists
     const courseId = courseware.courseId;
     const course = await Course.findById(courseId);
@@ -331,7 +352,7 @@ exports.startCourseware = async (req, res) => {
       }
     }
 
-    res.send("added courseware successfully");
+    res.status(200).json("added courseware successfully");
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
@@ -350,7 +371,7 @@ exports.submitCourseware = async (req, res) => {
         .status(500)
         .json({ message: "user not found. This is awkward" });
     if (!courseware)
-      return res.status(404).json({ message: "Courseware not found" });
+      return res.status(404).json({ message: "Courseware not foundxx" });
 
     if (
       !user.myCurrentCoursewares.some(
@@ -414,7 +435,7 @@ exports.submitCourseware = async (req, res) => {
     }
 
     await Promise.all(promises);
-    res.send("submitted courseware successfully");
+    res.status(201).json("submitted courseware successfully");
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
@@ -477,7 +498,7 @@ exports.batchSubmitReviewCards2 = async (req, res) => {
 
     await user.save();
 
-    res.send("reviewed cards successfully");
+    res.status(200).json("reviewed cards successfully");
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
@@ -547,7 +568,7 @@ exports.batchSubmitReviewCards = async (req, res) => {
 
     await user.save();
 
-    res.send("reviewed cards successfully");
+    res.status(200).json("reviewed cards successfully");
   } catch (err) {
     console.error("Batch review error:", err);
     res.status(400).json({ message: err.message });

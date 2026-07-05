@@ -1,10 +1,8 @@
+const Course = require("../models/courses");
 const Courseware = require("../models/coursewares");
 const ReviewCard = require("../models/questions");
 
 // Create a new courseware
-const courseware = require("../mock/courseware.json");
-const coursewares = require("../mock/coursewares.json");
-
 exports.createCourseware = async (req, res) => {
   try {
     // should take from the AI API
@@ -47,8 +45,9 @@ exports.getAllCoursewares = async (req, res) => {
 exports.getCoursewareById = async (req, res) => {
   try {
     const courseware = await Courseware.findById(req.params.id);
-    if (!courseware)
+    if (!courseware) {
       return res.status(404).json({ message: "Courseware not found" });
+    }
     res.json(courseware);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -61,7 +60,7 @@ exports.updateCourseware = async (req, res) => {
     const courseware = await Courseware.findByIdAndUpdate(
       req.params.id,
       req.body,
-      { new: true }
+      { new: true },
     );
     if (!courseware)
       return res.status(404).json({ message: "Courseware not found" });

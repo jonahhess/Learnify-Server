@@ -15,8 +15,7 @@ const courseSchema = new mongoose.Schema(
         title: { type: String, required: true },
         generationState: {
           type: String,
-          enum: ["idle", "generating", "ready"],
-          default: "idle",
+          enum: ["generating", "ready"],
         },
         generationLeaseUntil: {
           type: Date,

@@ -341,8 +341,8 @@ exports.startCourseware = async (req, res) => {
                 [`${basePath}.generationToken`]: generationToken,
               },
               {
-                $set: { [`${basePath}.generationState`]: "idle" },
                 $unset: {
+                  [`${basePath}.generationState`]: "",
                   [`${basePath}.generationLeaseUntil`]: "",
                   [`${basePath}.generationToken`]: "",
                 },

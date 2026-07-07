@@ -13,10 +13,6 @@ const courseSchema = new mongoose.Schema(
           ref: "Courseware",
         },
         title: { type: String, required: true },
-        generationState: {
-          type: String,
-          enum: ["generating", "ready"],
-        },
         generationLeaseUntil: {
           type: Date,
         },

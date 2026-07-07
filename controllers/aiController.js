@@ -137,7 +137,6 @@ exports.doGenerateCourseware = async (courseTitle, courseId, title) => {
   courseToUpdate.coursewares.splice(index, 1, {
     title,
     coursewareId,
-    generationState: "ready",
   });
   await courseToUpdate.save();
 

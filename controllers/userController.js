@@ -296,15 +296,10 @@ exports.startCourseware = async (req, res) => {
       const reserveFilter = {
         _id: courseId,
         [`${basePath}.coursewareId`]: { $exists: false },
-        $or: [
-          { [`${basePath}.generationState`]: { $exists: false } },
-          { [`${basePath}.generationState`]: { $ne: "generating" } },
-          { [`${basePath}.generationLeaseUntil`]: { $lte: now } },
-        ],
+        $or: [{ [`${basePath}.generationLeaseUntil`]: { $lte: now } }],
       };
       const reserveUpdate = {
         $set: {
-          [`${basePath}.generationState`]: "generating",
           [`${basePath}.generationLeaseUntil`]: leaseUntil,
           [`${basePath}.generationToken`]: generationToken,
         },
@@ -325,7 +320,6 @@ exports.startCourseware = async (req, res) => {
                 [`${basePath}.generationToken`]: generationToken,
               },
               {
-                $set: { [`${basePath}.generationState`]: "ready" },
                 $unset: {
                   [`${basePath}.generationLeaseUntil`]: "",
                   [`${basePath}.generationToken`]: "",
@@ -342,7 +336,6 @@ exports.startCourseware = async (req, res) => {
               },
               {
                 $unset: {
-                  [`${basePath}.generationState`]: "",
                   [`${basePath}.generationLeaseUntil`]: "",
                   [`${basePath}.generationToken`]: "",
                 },

@@ -409,8 +409,7 @@ exports.submitCourseware = async (req, res) => {
 
     const quiz = courseware.quiz.map((q) => q.questionId);
     const userId = req.userId;
-    const now = new Date();
-    const nextReviewDate = now.getDate();
+    const nextReviewDate = new Date();
 
     const promises = [user.save()];
     for (const questionId of quiz) {

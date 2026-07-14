@@ -25,20 +25,6 @@ const UserSchema = new mongoose.Schema(
       ],
       default: [],
     },
-    myCurrentCoursewares: {
-      type: [
-        {
-          courseId: { type: mongoose.Schema.Types.ObjectId, ref: "Course" },
-          coursewareId: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: "Courseware",
-          },
-          title: String,
-          index: Number,
-        },
-      ],
-      default: [],
-    },
     myCompletedCourses: {
       type: [
         {
@@ -74,7 +60,7 @@ const UserSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 // Hash password before saving

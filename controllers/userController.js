@@ -234,54 +234,25 @@ exports.startCourseware = async (req, res) => {
       }
     }
 
-    // user may take courseware
-    const title = courseware.title;
-    const updatedUser = await User.findOneAndUpdate(
-      {
-        _id: req.userId,
-        myCurrentCoursewares: { $not: { $elemMatch: { coursewareId } } },
-        myCurrentCourses: { $elemMatch: { courseId } },
-        $expr: { $lt: [{ $size: "$myCurrentCoursewares" }, 15] },
-      },
-      {
-        $push: {
-          myCurrentCoursewares: {
-            courseId,
-            coursewareId,
-            title,
-            index,
-          },
-        },
-      },
-      { new: true },
+    const user = await User.findById(req.userId).select(
+      "_id myCurrentCourses myCompletedCoursewares",
     );
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
 
-    // extra logic to get the exact error message to the client
-    if (!updatedUser) {
-      const user = await User.findById(req.userId).select(
-        "_id myCurrentCourses myCurrentCoursewares",
-      );
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-      if (
-        user.myCurrentCoursewares.some((c) =>
-          c.coursewareId.equals(coursewareId),
-        )
-      ) {
-        return res.status(204).json({ message: "courseware already exists!" });
-      }
-      if (user.myCurrentCoursewares.length >= 15) {
-        return res.status(400).json({ message: "Too many coursewares" });
-      }
-      if (!user.myCurrentCourses.some((c) => c.courseId.equals(courseId))) {
-        return res
-          .status(400)
-          .json({ message: "Cannot start courseware before starting course" });
-      }
-      return res.status(409).json({
-        message: "Failed to start courseware due to concurrent update",
-      });
+    if (!user.myCurrentCourses.some((c) => c.courseId.equals(courseId))) {
+      return res
+        .status(400)
+        .json({ message: "Cannot start courseware before starting course" });
+    }
+
+    if (
+      user.myCompletedCoursewares.some((c) =>
+        c.coursewareId.equals(coursewareId),
+      )
+    ) {
+      return res.status(204).json({ message: "courseware already completed" });
     }
 
     // async start generating the next courseware while user is working on current
@@ -366,28 +337,25 @@ exports.submitCourseware = async (req, res) => {
     if (!courseware)
       return res.status(404).json({ message: "Courseware not foundxx" });
 
-    if (
-      !user.myCurrentCoursewares.some(
-        (c) => c._doc.coursewareId?.toString() === req.params.coursewareId,
-      )
-    ) {
-      return res
-        .status(400)
-        .json({ message: "courseware not registered for user" });
-    }
-
     const courseId = courseware.courseId;
     const coursewareId = courseware._id;
+
+    if (!user.myCurrentCourses.some((c) => c.courseId.equals(courseId))) {
+      return res
+        .status(400)
+        .json({ message: "Cannot submit courseware before starting course" });
+    }
+
+    if (
+      user.myCompletedCoursewares.some((c) =>
+        c.coursewareId.equals(coursewareId),
+      )
+    ) {
+      return res.status(204).json({ message: "courseware already submitted" });
+    }
+
     const title = courseware.title;
-    const index = courseware._doc.index;
-
-    // move courseware from current to completed
-
-    const coursewaresExceptCurrent = user.myCurrentCoursewares.filter(
-      (c) => !c.coursewareId?.equals(coursewareId),
-    );
-
-    user.myCurrentCoursewares = coursewaresExceptCurrent;
+    const index = courseware.index;
     user.myCompletedCoursewares.push({ courseId, coursewareId, title, index });
 
     // check if user finished the course - if so move course to completed
@@ -403,7 +371,7 @@ exports.submitCourseware = async (req, res) => {
       // completed the course! congrats
       user.myCompletedCourses.push({ title: courseTitle, courseId, length });
       user.myCurrentCourses = user.myCurrentCourses.filter(
-        (c) => c.courseId !== courseId,
+        (c) => !c.courseId.equals(courseId),
       );
     }
 

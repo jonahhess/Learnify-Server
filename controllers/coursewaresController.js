@@ -16,12 +16,6 @@ exports.createCourseware = async (req, res) => {
       createdBy: req.user.id,
     });
     await newCourseware.save();
-    //update the user's createdCoursewares array
-    req.user.myCurrentCoursewares.push({
-      courseId: newCourseware._id,
-      title: newCourseware.title,
-    });
-    await req.user.save();
     res.status(201).json({
       message: "Courseware created successfully",
       courseware: newCourseware,

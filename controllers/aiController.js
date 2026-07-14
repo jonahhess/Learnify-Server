@@ -7,7 +7,6 @@ const {
 const Course = require("../models/courses");
 const Courseware = require("../models/coursewares");
 const Question = require("../models/questions");
-const User = require("../models/users");
 const levenModule = require("leven");
 const leven =
   typeof levenModule === "function" ? levenModule : levenModule.default;
@@ -139,26 +138,6 @@ exports.doGenerateCourseware = async (courseTitle, courseId, title) => {
     coursewareId,
   });
   await courseToUpdate.save();
-
-  await User.updateMany(
-    {
-      "myCurrentCoursewares.courseId": newCourseware.courseId,
-      "myCurrentCoursewares.title": newCourseware.title,
-    },
-    {
-      $set: {
-        "myCurrentCoursewares.$[elem].coursewareId": newCourseware._id,
-      },
-    },
-    {
-      arrayFilters: [
-        {
-          "elem.courseId": newCourseware.courseId,
-          "elem.title": newCourseware.title,
-        },
-      ],
-    },
-  );
 
   return newCourseware;
 };

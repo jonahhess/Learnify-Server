@@ -6,7 +6,7 @@ exports.createReviewCard = async (req, res) => {
     const { courseId, question, nextReviewDate } = req.body;
     const newReviewCard = new ReviewCard({
       courseId,
-      userId: req.user.id,
+      userId: req.userId,
       question,
       nextReviewDate,
     });
@@ -23,7 +23,7 @@ exports.createReviewCard = async (req, res) => {
 // Get all review cards for a user
 exports.getAllReviewCards = async (req, res) => {
   try {
-    const reviewCards = await ReviewCard.find({ userId: req.user.id });
+    const reviewCards = await ReviewCard.find({ userId: req.userId });
     res.json(reviewCards);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -35,7 +35,7 @@ exports.getReviewCardById = async (req, res) => {
   try {
     const reviewCard = await ReviewCard.findOne({
       _id: req.params.id,
-      userId: req.user.id,
+      userId: req.userId,
     });
     if (!reviewCard)
       return res.status(404).json({ message: "Review card not found" });
@@ -49,9 +49,9 @@ exports.getReviewCardById = async (req, res) => {
 exports.updateReviewCard = async (req, res) => {
   try {
     const reviewCard = await ReviewCard.findOneAndUpdate(
-      { _id: req.params.id, userId: req.user.id },
+      { _id: req.params.id, userId: req.userId },
       req.body,
-      { new: true }
+      { new: true },
     );
     if (!reviewCard)
       return res.status(404).json({ message: "Review card not found" });
@@ -66,7 +66,7 @@ exports.deleteReviewCard = async (req, res) => {
   try {
     const reviewCard = await ReviewCard.findOneAndDelete({
       _id: req.params.id,
-      userId: req.user.id,
+      userId: req.userId,
     });
     if (!reviewCard)
       return res.status(404).json({ message: "Review card not found" });

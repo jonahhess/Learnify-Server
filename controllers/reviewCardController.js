@@ -1,4 +1,5 @@
 const ReviewCard = require("../models/reviewCards");
+const User = require("../models/users");
 
 // Create a new review card
 exports.createReviewCard = async (req, res) => {
@@ -70,6 +71,21 @@ exports.deleteReviewCard = async (req, res) => {
     });
     if (!reviewCard)
       return res.status(404).json({ message: "Review card not found" });
+
+    await User.updateOne(
+      { _id: req.userId },
+      {
+        $pull: {
+          myReviewCards: {
+            $or: [
+              { _id: reviewCard._id },
+              { questionId: reviewCard.questionId },
+            ],
+          },
+        },
+      },
+    );
+
     res.json({ message: "Review card deleted" });
   } catch (err) {
     res.status(500).json({ message: err.message });

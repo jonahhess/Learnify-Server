@@ -181,6 +181,51 @@ exports.startCourse = async (req, res) => {
   }
 };
 
+// stop a course by ID
+exports.stopCourse = async (req, res) => {
+  try {
+    const course = await Course.findById(req.body.id);
+
+    if (!course) return res.status(404).json({ message: "Course not found" });
+    const courseId = course._id;
+
+    const updatedUser = await User.findOneAndUpdate(
+      {
+        _id: req.userId,
+        myCurrentCourses: { $elemMatch: { courseId } },
+      },
+      {
+        $pull: {
+          myCurrentCourses: { courseId },
+        },
+      },
+    );
+
+    if (!updatedUser) {
+      const user = await User.findById(req.userId).select(
+        "_id myCurrentCourses",
+      );
+      if (!user) {
+        return res
+          .status(404)
+          .json({ message: "User not found. This is awkward" });
+      }
+      if (user.myCurrentCourses.every((c) => !c.courseId.equals(courseId))) {
+        return res
+          .status(400)
+          .json({ message: "user not enrolled in course!" });
+      }
+      return res
+        .status(409)
+        .json({ message: "Failed to stop course due to concurrent update" });
+    }
+
+    res.status(200).json("removed course successfully");
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+};
+
 // start a courseware by ID
 exports.startCourseware = async (req, res) => {
   try {

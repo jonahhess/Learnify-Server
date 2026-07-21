@@ -11,6 +11,7 @@ const {
   updateUser,
   deleteUser,
   startCourse,
+  stopCourse,
   startCourseware,
   submitCourseware,
   batchSubmitReviewCards,
@@ -32,6 +33,9 @@ router.get("/me", auth, getMe);
 
 // Add Course to user by Id
 router.post("/:id/courses", auth, startCourse);
+
+// Remove Course from user by Id
+router.delete("/:id/courses", auth, stopCourse);
 
 // Submit Courseware by id
 router.put(

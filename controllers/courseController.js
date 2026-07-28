@@ -27,9 +27,90 @@ exports.createCourse = async (req, res) => {
 // Get all courses
 exports.getAllCourses = async (req, res) => {
   try {
-    //limited to 10 results
-    const courses = await Course.find().limit(10);
-    res.json(courses);
+    const {
+      page = "1",
+      limit = "25",
+      sortBy = "createdAt",
+      sortOrder = "desc",
+      search,
+      keyword,
+      all,
+    } = req.query;
+
+    const parsedPage = Math.max(parseInt(page, 10) || 1, 1);
+    const parsedLimit = Math.min(Math.max(parseInt(limit, 10) || 25, 1), 100);
+
+    const allowedSortFields = [
+      "createdAt",
+      "updatedAt",
+      "title",
+      "views",
+      "likes",
+    ];
+    const normalizedSortBy = allowedSortFields.includes(sortBy)
+      ? sortBy
+      : "createdAt";
+    const normalizedSortOrder = sortOrder === "asc" ? 1 : -1;
+
+    const query = {};
+    if (search) {
+      query.title = { $regex: search, $options: "i" };
+    }
+
+    if (keyword) {
+      query.keywords = keyword;
+    }
+
+    const sort = { [normalizedSortBy]: normalizedSortOrder };
+
+    if (all === "true") {
+      const courses = await Course.find(query).sort(sort).lean();
+
+      return res.json({
+        data: courses,
+        meta: {
+          total: courses.length,
+          page: 1,
+          limit: courses.length,
+          totalPages: 1,
+          hasNextPage: false,
+          hasPreviousPage: false,
+          sortBy: normalizedSortBy,
+          sortOrder: sortOrder === "asc" ? "asc" : "desc",
+          filters: {
+            search: search || null,
+            keyword: keyword || null,
+          },
+        },
+      });
+    }
+
+    const skip = (parsedPage - 1) * parsedLimit;
+
+    const [courses, total] = await Promise.all([
+      Course.find(query).sort(sort).skip(skip).limit(parsedLimit).lean(),
+      Course.countDocuments(query),
+    ]);
+
+    const totalPages = Math.max(Math.ceil(total / parsedLimit), 1);
+
+    res.json({
+      data: courses,
+      meta: {
+        total,
+        page: parsedPage,
+        limit: parsedLimit,
+        totalPages,
+        hasNextPage: parsedPage < totalPages,
+        hasPreviousPage: parsedPage > 1,
+        sortBy: normalizedSortBy,
+        sortOrder: sortOrder === "asc" ? "asc" : "desc",
+        filters: {
+          search: search || null,
+          keyword: keyword || null,
+        },
+      },
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

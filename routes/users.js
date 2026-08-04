@@ -14,7 +14,7 @@ const {
   stopCourse,
   startCourseware,
   submitCourseware,
-  batchSubmitReviewCards,
+  submitReviewCardAnswer,
 } = require("../controllers/userController");
 const validateUser = require("../middleware/validateUser");
 
@@ -54,7 +54,7 @@ router.post(
 );
 
 // Submit Review Cards
-router.post("/:id/reviewcards", auth, validateUser, batchSubmitReviewCards);
+router.post("/:id/reviewcards", auth, validateUser, submitReviewCardAnswer);
 
 // end of app section
 

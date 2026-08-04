@@ -474,6 +474,115 @@ const performReview = (reviewCard, success) => {
   };
 };
 
+const buildHttpError = (status, body) => {
+  const err = new Error(body?.message || "request failed");
+  err.status = status;
+  err.body = body;
+  return err;
+};
+
+const applyReviewedCards = async (user, reviewedCards) => {
+  const myReviewCards = user.myReviewCards || [];
+
+  if (!Array.isArray(reviewedCards) || !reviewedCards.length) {
+    throw buildHttpError(400, { message: "no reviewed cards provided" });
+  }
+
+  if (reviewedCards.length > myReviewCards.length) {
+    throw buildHttpError(400, {
+      message: "too many cards reviewed. something is wrong",
+    });
+  }
+
+  const reviewedCardMap = new Map();
+  for (const reviewedCard of reviewedCards) {
+    if (!reviewedCard?._id) {
+      throw buildHttpError(400, {
+        message: "each reviewed card must include _id",
+      });
+    }
+    reviewedCardMap.set(reviewedCard._id.toString(), !!reviewedCard.success);
+  }
+
+  const reviewedCardIds = [...reviewedCardMap.keys()];
+
+  const reviewCards = await ReviewCard.find({
+    _id: { $in: reviewedCardIds },
+    userId: user._id,
+  });
+
+  const foundCardIds = new Set(reviewCards.map((card) => card._id.toString()));
+  const unknownCardIds = reviewedCardIds.filter((id) => !foundCardIds.has(id));
+  if (unknownCardIds.length) {
+    throw buildHttpError(400, {
+      message: "some reviewed cards were not found for this user",
+      unknownCardIds,
+    });
+  }
+
+  const incorrectReviewCards = [];
+  const ops = reviewCards
+    .map((card) => {
+      const wasSuccessful = reviewedCardMap.get(card._id.toString());
+      if (wasSuccessful === undefined) return null;
+
+      if (!wasSuccessful) {
+        incorrectReviewCards.push(card);
+      }
+
+      const updated = performReview(card, wasSuccessful);
+      return {
+        updateOne: {
+          filter: { _id: card._id },
+          update: {
+            $set: {
+              reviews: updated.reviews,
+              successes: updated.successes,
+              nextReviewDate: updated.nextReviewDate,
+              updatedAt: new Date(),
+            },
+          },
+        },
+      };
+    })
+    .filter(Boolean);
+
+  if (ops.length) {
+    await ReviewCard.bulkWrite(ops);
+  }
+
+  const incorrectQuestionIds = incorrectReviewCards.map((card) =>
+    card.questionId.toString(),
+  );
+  const incorrectQuestions = incorrectQuestionIds.length
+    ? await Question.find({ _id: { $in: incorrectQuestionIds } }).select(
+        "_id correctAnswer",
+      )
+    : [];
+  const correctAnswerByQuestionId = new Map(
+    incorrectQuestions.map((question) => [
+      question._id.toString(),
+      question.correctAnswer,
+    ]),
+  );
+  const incorrectCards = incorrectReviewCards.map((card) => ({
+    id: card._id,
+    correctAnswer:
+      correctAnswerByQuestionId.get(card.questionId.toString()) ?? null,
+  }));
+
+  user.myReviewCards = myReviewCards.filter(
+    (rc) => !reviewedCardIds.includes(rc?._id?.toString()),
+  );
+  await user.save();
+
+  return {
+    reviewedCardsCount: reviewCards.length,
+    incorrectCards,
+    reviewedCardIds,
+  };
+};
+
 // batch review cards by ID
 exports.batchSubmitReviewCards2 = async (req, res) => {
   try {
@@ -549,123 +658,57 @@ exports.batchSubmitReviewCards = async (req, res) => {
         .json({ message: "user not found. This is awkward" });
     }
 
-    const myReviewCards = user.myReviewCards;
     const reviewedCards = Array.isArray(req.body?.reviewedCards)
       ? req.body.reviewedCards
       : []; // [{ _id: '...', success: 1/0 }]
-
-    if (!reviewedCards.length) {
-      return res.status(400).json({ message: "no reviewed cards provided" });
-    }
-
-    if (reviewedCards.length > myReviewCards.length) {
-      return res
-        .status(400)
-        .json({ message: "too many cards reviewed. something is wrong" });
-    }
-
-    const reviewedCardMap = new Map();
-    for (const reviewedCard of reviewedCards) {
-      if (!reviewedCard?._id) {
-        return res
-          .status(400)
-          .json({ message: "each reviewed card must include _id" });
-      }
-      reviewedCardMap.set(reviewedCard._id.toString(), !!reviewedCard.success);
-    }
-
-    const reviewedCardIds = [...reviewedCardMap.keys()];
-
-    // find relevant cards
-    const reviewCards = await ReviewCard.find({
-      _id: { $in: reviewedCardIds },
-      userId: req.userId,
-    });
-
-    const foundCardIds = new Set(
-      reviewCards.map((card) => card._id.toString()),
-    );
-    const unknownCardIds = reviewedCardIds.filter(
-      (id) => !foundCardIds.has(id),
-    );
-    if (unknownCardIds.length) {
-      return res.status(400).json({
-        message: "some reviewed cards were not found for this user",
-        unknownCardIds,
-      });
-    }
-
-    const incorrectReviewCards = [];
-
-    // build bulk update operations
-    const ops = reviewCards
-      .map((card) => {
-        const wasSuccessful = reviewedCardMap.get(card._id.toString());
-        if (wasSuccessful === undefined) return null;
-
-        if (!wasSuccessful) {
-          incorrectReviewCards.push(card);
-        }
-
-        // let performReview calculate updated values
-        const updated = performReview(card, wasSuccessful);
-
-        return {
-          updateOne: {
-            filter: { _id: card._id },
-            update: {
-              $set: {
-                reviews: updated.reviews,
-                successes: updated.successes,
-                nextReviewDate: updated.nextReviewDate,
-                updatedAt: new Date(),
-              },
-            },
-          },
-        };
-      })
-      .filter(Boolean);
-
-    if (ops.length) {
-      await ReviewCard.bulkWrite(ops);
-    }
-
-    const incorrectQuestionIds = incorrectReviewCards.map((card) =>
-      card.questionId.toString(),
-    );
-    const incorrectQuestions = incorrectQuestionIds.length
-      ? await Question.find({ _id: { $in: incorrectQuestionIds } }).select(
-          "_id correctAnswer",
-        )
-      : [];
-    const correctAnswerByQuestionId = new Map(
-      incorrectQuestions.map((question) => [
-        question._id.toString(),
-        question.correctAnswer,
-      ]),
-    );
-    const incorrectCards = incorrectReviewCards.map((card) => ({
-      id: card._id,
-      correctAnswer:
-        correctAnswerByQuestionId.get(card.questionId.toString()) ?? null,
-    }));
-
-    // remove reviewed cards from user.myReviewCards
-    const idsReviewed = reviewCards.map((card) => card._id.toString());
-    user.myReviewCards = myReviewCards.filter(
-      (rc) => !idsReviewed.includes(rc?._id?.toString()),
-    );
-
-    await user.save();
+    const result = await applyReviewedCards(user, reviewedCards);
 
     res.status(200).json({
       message: "reviewed cards successfully",
-      reviewedCount: reviewCards.length,
-      incorrectCount: incorrectCards.length,
-      incorrectCards,
+      reviewedCount: result.reviewedCardsCount,
+      incorrectCount: result.incorrectCards.length,
+      incorrectCards: result.incorrectCards,
     });
   } catch (err) {
+    if (err.status) {
+      return res.status(err.status).json(err.body);
+    }
     console.error("Batch review error:", err);
+    res.status(400).json({ message: err.message });
+  }
+};
+
+// review one card by ID
+exports.submitReviewCardAnswer = async (req, res) => {
+  try {
+    const user = await User.findById(req.userId);
+
+    if (!user) {
+      return res
+        .status(500)
+        .json({ message: "user not found. This is awkward" });
+    }
+
+    const reviewedCard = req.body?.reviewedCard;
+    if (!reviewedCard) {
+      return res.status(400).json({ message: "reviewedCard is required" });
+    }
+
+    const result = await applyReviewedCards(user, [reviewedCard]);
+    const wasSuccessful = !!reviewedCard.success;
+    const correctAnswer = result.incorrectCards[0]?.correctAnswer ?? null;
+
+    res.status(200).json({
+      message: "reviewed card successfully",
+      reviewCardId: result.reviewedCardIds[0],
+      wasSuccessful,
+      correctAnswer,
+    });
+  } catch (err) {
+    if (err.status) {
+      return res.status(err.status).json(err.body);
+    }
+    console.error("Review card submission error:", err);
     res.status(400).json({ message: err.message });
   }
 };

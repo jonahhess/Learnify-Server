@@ -447,16 +447,30 @@ exports.submitCourseware = async (req, res) => {
 };
 
 // helper fn for review cards
-const performReview = async (reviewCard, success) => {
-  reviewCard.reviews = reviewCard.reviews ? reviewCard.reviews + 1 : 1;
-  reviewCard.successes = reviewCard.successes
-    ? reviewCard.successes + !!success
-    : !!success;
-  const add = Math.min(Math.max(reviewCard.successes * 2, 1), 365);
-  const oldReviewDate = new Date(reviewCard.nextReviewDate);
-  const nextReviewDate = oldReviewDate.setDate(oldReviewDate.getDate() + add);
-  reviewCard.nextReviewDate = nextReviewDate;
-  reviewCard.save();
+const performReview = (reviewCard, success) => {
+  const wasSuccessful = !!success;
+  const reviews = (reviewCard.reviews || 0) + 1;
+  const successes = wasSuccessful ? (reviewCard.successes || 0) + 1 : 0;
+
+  let intervalDays = 1;
+  if (wasSuccessful) {
+    // Exponential spacing grows quickly for strong recall while keeping a 1-year cap.
+    intervalDays = Math.min(Math.round(Math.pow(1.8, successes)), 365);
+  }
+
+  const now = new Date();
+  const baseDate = reviewCard.nextReviewDate
+    ? new Date(reviewCard.nextReviewDate)
+    : now;
+  const anchorDate = baseDate > now ? baseDate : now;
+  const nextReviewDate = new Date(anchorDate);
+  nextReviewDate.setDate(nextReviewDate.getDate() + intervalDays);
+
+  return {
+    reviews,
+    successes,
+    nextReviewDate,
+  };
 };
 
 // batch review cards by ID
@@ -487,13 +501,28 @@ exports.batchSubmitReviewCards2 = async (req, res) => {
       userId: req.userId,
     });
 
-    for (const card of reviewCards) {
-      performReview(
-        card,
-        !!reviewedCards.find((rc) => rc.questionId === card._id.toString())
-          ?.success,
+    const updatePromises = reviewCards.map((card) => {
+      const reviewedCard = reviewedCards.find(
+        (rc) => rc.questionId === card.questionId.toString(),
       );
-    }
+
+      if (!reviewedCard) return null;
+
+      const updated = performReview(card, reviewedCard.success);
+      return ReviewCard.updateOne(
+        { _id: card._id, userId: req.userId },
+        {
+          $set: {
+            reviews: updated.reviews,
+            successes: updated.successes,
+            nextReviewDate: updated.nextReviewDate,
+            updatedAt: new Date(),
+          },
+        },
+      );
+    });
+
+    await Promise.all(updatePromises.filter(Boolean));
 
     const idsReviewed = reviewCards.map((rc) => rc.questionId.toString());
     const reviewCardsExceptFinished = myReviewCards.filter(
